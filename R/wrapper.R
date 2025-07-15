@@ -1,0 +1,116 @@
+#' Get associations for a specific variant with optional parameters
+#' @param variant_id The rsid of the variant
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @param study_accession Specific study accession
+#' @export
+gwas_get_variant_associations <- function(variant_id, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL, study_accession = NULL) {
+  .Call(wrap__gwas_get_variant_associations, variant_id, start, size, reveal, p_lower, p_upper, study_accession)
+}
+
+#' Get all associations with optional parameters
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_associations <- function(start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL) {
+  .Call(wrap__gwas_get_associations, start, size, reveal, p_lower, p_upper)
+}
+
+#' Get associations for a specific chromosome
+#' @param chromosome Chromosome identifier
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @param bp_lower Lower base pair location threshold
+#' @param bp_upper Upper base pair location threshold
+#' @param study_accession Specific study accession
+#' @param trait_name Specific trait ID
+#' @export
+gwas_get_chromosome_associations <- function(chromosome, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL, bp_lower = NULL, bp_upper = NULL, study_accession = NULL, trait_name = NULL) {
+  .Call(wrap__gwas_get_chromosome_associations, chromosome, start, size, reveal, p_lower, p_upper, bp_lower, bp_upper, study_accession, trait_name)
+}
+
+#' Get associations for a variant on a specific chromosome
+#' @param chromosome Chromosome identifier
+#' @param variant_id The rsid of the variant
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @param study_accession Specific study accession
+#' @param trait_name Specific trait ID
+#' @export
+gwas_get_chromosome_variant_associations <- function(chromosome, variant_id, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL, study_accession = NULL, trait_name = NULL) {
+  .Call(wrap__gwas_get_chromosome_variant_associations, chromosome, variant_id, start, size, reveal, p_lower, p_upper, study_accession, trait_name)
+}
+
+#' Get all studies
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @export
+gwas_get_studies <- function(start = NULL, size = NULL) {
+  .Call(wrap__gwas_get_studies, start, size)
+}
+
+#' Get associations for a specific study
+#' @param study_accession Study accession ID
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_study_associations <- function(study_accession, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL) {
+  .Call(wrap__gwas_get_study_associations, study_accession, start, size, reveal, p_lower, p_upper)
+}
+
+#' Get all traits
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @export
+gwas_get_traits <- function(start = NULL, size = NULL) {
+  .Call(wrap__gwas_get_traits, start, size)
+}
+
+#' Get associations for a specific trait
+#' @param trait_id Trait identifier
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_trait_associations <- function(trait_id, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL) {
+  .Call(wrap__gwas_get_trait_associations, trait_id, start, size, reveal, p_lower, p_upper)
+}
+
+#' Get studies for a specific trait
+#' @param trait_id Trait identifier
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @export
+gwas_get_trait_studies <- function(trait_id, start = NULL, size = NULL) {
+  .Call(wrap__gwas_get_trait_studies, trait_id, start, size)
+}
+
+#' Get associations for a specific trait and study
+#' @param trait_id Trait identifier
+#' @param study_accession Study accession ID
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_trait_study_associations <- function(trait_id, study_accession, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL) {
+  .Call(wrap__gwas_get_trait_study_associations, trait_id, study_accession, start, size, reveal, p_lower, p_upper)
+}
