@@ -1,6 +1,6 @@
 Package: iani
 Title: GWAS Summary Statistics Database API Client
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R:
     person("Brett", "Gilio", , "bgilio@kumc.edu", role = c("aut", "cre"))
 Description: A comprehensive R interface to the GWAS Catalog Summary Statistics Database API.
