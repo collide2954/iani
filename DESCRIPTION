@@ -1,10 +1,13 @@
 Package: iani
-Title: What the Package Does (One Line, Title Case)
-Version: 0.1.0
-Authors@R: 
+Title: GWAS Summary Statistics Database API Client
+Version: 0.0.0.9000
+Authors@R:
     person("Brett", "Gilio", , "bgilio@kumc.edu", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: use_mit_license()
+Description: A comprehensive R interface to the GWAS Catalog Summary Statistics Database API.
+    Provides functions to query associations, chromosomes, studies, traits, and variants from
+    the EBI GWAS Summary Statistics Database. Supports filtering by p-values, base pair
+    locations, and accessing both harmonized and raw data. Built with Rust for high performance.
+License: MIT
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
@@ -12,3 +15,11 @@ Config/rextendr/version: 0.4.1
 SystemRequirements: Cargo (Rust's package manager), rustc
 Depends: 
     R (>= 4.2)
+Imports:
+    jsonlite
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+URL: https://github.com/collide2954/iani
+BugReports: https://github.com/collide2954/iani/issues
