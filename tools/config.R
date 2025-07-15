@@ -34,7 +34,7 @@ if (!is_not_cran) {
 )
 
 # when DEBUG env var is present we use `--debug` build
-.profile <- ifelse(is_debug, "", "--release")
+.profile <- ifelse(is_debug, "dev", "release")
 .clean_targets <- ifelse(is_debug, "", "$(TARGET_DIR)")
 
 # We specify this target when building for webR
@@ -48,57 +48,69 @@ if (is_wasm) {
   message("Building for WebR")
 }
 
-# we check if we are making a debug build or not
-# if so, the LIBDIR environment variable becomes:
-# LIBDIR = $(TARGET_DIR)/{wasm32-unknown-emscripten}/debug
-# this will be used to fill out the LIBDIR env var for Makevars.in
-target_libpath <- if (is_wasm) "wasm32-unknown-emscripten" else NULL
-cfg <- if (is_debug) "debug" else "release"
+# Detect OpenSSL and other required libraries
+detect_openssl <- function() {
+  # Try to find OpenSSL using pkg-config
+  pkg_config_available <- system("which pkg-config", ignore.stdout = TRUE, ignore.stderr = TRUE) == 0
 
-# used to replace @LIBDIR@
-.libdir <- paste(c(target_libpath, cfg), collapse = "/")
+  if (pkg_config_available) {
+    # Try to get OpenSSL flags from pkg-config
+    ssl_libs_result <- system("pkg-config --libs openssl", intern = TRUE, ignore.stderr = TRUE)
+    ssl_cflags_result <- system("pkg-config --cflags openssl", intern = TRUE, ignore.stderr = TRUE)
 
-# use this to replace @TARGET@
-# we specify the target _only_ on webR
-# there may be use cases later where this can be adapted or expanded
-.target <- ifelse(is_wasm, paste0("--target=", webr_target), "")
+    if (length(ssl_libs_result) > 0 && !is.na(ssl_libs_result)) {
+      message("Found OpenSSL via pkg-config")
+      return(paste(ssl_libs_result, "-ldl -lm"))
+    }
+  }
 
-# read in the Makevars.in file checking
-is_windows <- .Platform[["OS.type"]] == "windows"
+  # Fallback: try common system locations
+  common_ssl_paths <- c(
+    "/usr/lib/x86_64-linux-gnu",
+    "/usr/lib64",
+    "/usr/local/lib",
+    "/opt/local/lib",
+    "/usr/lib"
+  )
 
-# if windows we replace in the Makevars.win.in
-mv_fp <- ifelse(
-  is_windows,
-  "src/Makevars.win.in",
-  "src/Makevars.in"
-)
+  for (path in common_ssl_paths) {
+    if (file.exists(file.path(path, "libssl.so")) || file.exists(file.path(path, "libssl.a"))) {
+      message(paste("Found OpenSSL in", path))
+      return(paste("-L", path, "-lssl -lcrypto -ldl -lm", sep = ""))
+    }
+  }
 
-# set the output file
-mv_ofp <- ifelse(
-  is_windows,
-  "src/Makevars.win",
-  "src/Makevars"
-)
-
-# delete the existing Makevars{.win}
-if (file.exists(mv_ofp)) {
-  message("Cleaning previous `", mv_ofp, "`.")
-  invisible(file.remove(mv_ofp))
+  # Default fallback
+  message("Using default OpenSSL linking flags")
+  return("-lssl -lcrypto -ldl -lm")
 }
 
-# read as a single string
-mv_txt <- readLines(mv_fp)
+# Set library directory based on profile
+.libdir <- ifelse(is_debug, "debug", "release")
 
-# replace placeholder values
-new_txt <- gsub("@CRAN_FLAGS@", .cran_flags, mv_txt) |>
-  gsub("@PROFILE@", .profile, x = _) |>
-  gsub("@CLEAN_TARGET@", .clean_targets, x = _) |>
-  gsub("@LIBDIR@", .libdir, x = _) |>
-  gsub("@TARGET@", .target, x = _)
+# Detect required system libraries
+if (is_wasm) {
+  # For WebR, we don't need OpenSSL
+  .pkg_libs <- ""
+} else {
+  # For regular builds, detect and include OpenSSL
+  .pkg_libs <- detect_openssl()
+}
 
-message("Writing `", mv_ofp, "`.")
-con <- file(mv_ofp, open = "wb")
-writeLines(new_txt, con, sep = "\n")
-close(con)
+# Write the configuration
+writeLines(c(
+  paste("LIBDIR =", .libdir),
+  paste("PKG_LIBS =", .pkg_libs),
+  paste("PROFILE =", .profile)
+), "src/Makevars.tmp")
 
-message("`tools/config.R` has finished.")
+# Read Makevars.in template and substitute variables
+makevars_in <- readLines("src/Makevars.in")
+makevars_out <- gsub("@LIBDIR@", .libdir, makevars_in)
+makevars_out <- gsub("@PKG_LIBS@", .pkg_libs, makevars_out)
+makevars_out <- gsub("@PROFILE@", .profile, makevars_out)
+
+# Write the final Makevars
+writeLines(makevars_out, "src/Makevars")
+
+message("Configuration complete.")
