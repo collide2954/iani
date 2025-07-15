@@ -12,8 +12,9 @@ pub struct Association {
     pub chromosome: Option<i32>,
     pub base_pair_location: Option<i64>,
     pub study_accession: Option<String>,
-    pub trait_name: Option<String>,
-    pub p_value: Option<String>,
+    #[serde(rename = "trait")]
+    pub trait_ids: Option<Vec<String>>,
+    pub p_value: Option<f64>,
     pub code: Option<i32>,
     pub effect_allele: Option<String>,
     pub other_allele: Option<String>,
@@ -24,7 +25,7 @@ pub struct Association {
     pub beta: Option<f64>,
     pub se: Option<f64>,
     #[serde(rename = "_links")]
-    pub links: Option<HashMap<String, Link>>,
+    pub links: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -37,7 +38,7 @@ pub struct HalResponse<T> {
     #[serde(rename = "_embedded")]
     pub embedded: Option<HashMap<String, T>>,
     #[serde(rename = "_links")]
-    pub links: Option<HashMap<String, Link>>,
+    pub links: Option<HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
