@@ -10,9 +10,131 @@
 #' @useDynLib iani, .registration = TRUE
 NULL
 
-#' Return string `"Hello world!"` to R.
+#' Create a new GWAS API client
 #' @export
-hello_world <- function() .Call(wrap__hello_world)
+gwas_client_new <- function() .Call(wrap__gwas_client_new)
+
+#' Get all associations with optional parameters
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_associations <- function(start, size, reveal, p_lower, p_upper) .Call(wrap__gwas_get_associations, start, size, reveal, p_lower, p_upper)
+
+#' Get associations for a specific variant
+#' @param variant_id The rsid of the variant
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @param study_accession Specific study accession
+#' @export
+gwas_get_variant_associations <- function(variant_id, start, size, reveal, p_lower, p_upper, study_accession) .Call(wrap__gwas_get_variant_associations, variant_id, start, size, reveal, p_lower, p_upper, study_accession)
+
+#' Get all chromosomes
+#' @export
+gwas_get_chromosomes <- function() .Call(wrap__gwas_get_chromosomes)
+
+#' Get a specific chromosome
+#' @param chromosome Chromosome identifier (1-22, X, Y, MT mapped to 23, 24, 25)
+#' @export
+gwas_get_chromosome <- function(chromosome) .Call(wrap__gwas_get_chromosome, chromosome)
+
+#' Get associations for a specific chromosome
+#' @param chromosome Chromosome identifier
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @param bp_lower Lower base pair location threshold
+#' @param bp_upper Upper base pair location threshold
+#' @param study_accession Specific study accession
+#' @param trait_name Specific trait ID
+#' @export
+gwas_get_chromosome_associations <- function(chromosome, start, size, reveal, p_lower, p_upper, bp_lower, bp_upper, study_accession, trait_name) .Call(wrap__gwas_get_chromosome_associations, chromosome, start, size, reveal, p_lower, p_upper, bp_lower, bp_upper, study_accession, trait_name)
+
+#' Get associations for a variant on a specific chromosome
+#' @param chromosome Chromosome identifier
+#' @param variant_id The rsid of the variant
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @param study_accession Specific study accession
+#' @param trait_name Specific trait ID
+#' @export
+gwas_get_chromosome_variant_associations <- function(chromosome, variant_id, start, size, reveal, p_lower, p_upper, study_accession, trait_name) .Call(wrap__gwas_get_chromosome_variant_associations, chromosome, variant_id, start, size, reveal, p_lower, p_upper, study_accession, trait_name)
+
+#' Get all studies
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @export
+gwas_get_studies <- function(start, size) .Call(wrap__gwas_get_studies, start, size)
+
+#' Get a specific study
+#' @param study_accession Study accession ID
+#' @export
+gwas_get_study <- function(study_accession) .Call(wrap__gwas_get_study, study_accession)
+
+#' Get associations for a specific study
+#' @param study_accession Study accession ID
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_study_associations <- function(study_accession, start, size, reveal, p_lower, p_upper) .Call(wrap__gwas_get_study_associations, study_accession, start, size, reveal, p_lower, p_upper)
+
+#' Get all traits
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @export
+gwas_get_traits <- function(start, size) .Call(wrap__gwas_get_traits, start, size)
+
+#' Get a specific trait
+#' @param trait_id Trait identifier
+#' @export
+gwas_get_trait <- function(trait_id) .Call(wrap__gwas_get_trait, trait_id)
+
+#' Get associations for a specific trait
+#' @param trait_id Trait identifier
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_trait_associations <- function(trait_id, start, size, reveal, p_lower, p_upper) .Call(wrap__gwas_get_trait_associations, trait_id, start, size, reveal, p_lower, p_upper)
+
+#' Get studies for a specific trait
+#' @param trait_id Trait identifier
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @export
+gwas_get_trait_studies <- function(trait_id, start, size) .Call(wrap__gwas_get_trait_studies, trait_id, start, size)
+
+#' Get a specific study for a trait
+#' @param trait_id Trait identifier
+#' @param study_accession Study accession ID
+#' @export
+gwas_get_trait_study <- function(trait_id, study_accession) .Call(wrap__gwas_get_trait_study, trait_id, study_accession)
+
+#' Get associations for a specific trait and study
+#' @param trait_id Trait identifier
+#' @param study_accession Study accession ID
+#' @param start Offset number (default: 0)
+#' @param size Number of items returned (default: 20)
+#' @param reveal Show raw/all data ("raw" or "all")
+#' @param p_lower Lower p-value threshold
+#' @param p_upper Upper p-value threshold
+#' @export
+gwas_get_trait_study_associations <- function(trait_id, study_accession, start, size, reveal, p_lower, p_upper) .Call(wrap__gwas_get_trait_study_associations, trait_id, study_accession, start, size, reveal, p_lower, p_upper)
 
 
 # nolint end
