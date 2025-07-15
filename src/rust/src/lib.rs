@@ -652,19 +652,11 @@ fn gwas_get_trait_study_associations(
     }
 }
 
-/// Return string `"Hello world!"` to R.
-/// @export
-#[extendr]
-fn hello_world() -> &'static str {
-    "Hello world!"
-}
-
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
 extendr_module! {
     mod iani;
-    fn hello_world;
     fn gwas_client_new;
     fn gwas_get_associations;
     fn gwas_get_variant_associations;
