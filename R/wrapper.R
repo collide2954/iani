@@ -1,3 +1,9 @@
+#' Create a new GWAS API client
+#' @export
+gwas_client_new <- function() {
+  .Call(wrap__gwas_client_new)
+}
+
 #' Get associations for a specific variant with optional parameters
 #' @param variant_id The rsid of the variant
 #' @param start Offset number (default: 0)
@@ -20,6 +26,19 @@ gwas_get_variant_associations <- function(variant_id, start = NULL, size = NULL,
 #' @export
 gwas_get_associations <- function(start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL) {
   .Call(wrap__gwas_get_associations, start, size, reveal, p_lower, p_upper)
+}
+
+#' Get all chromosomes
+#' @export
+gwas_get_chromosomes <- function() {
+  .Call(wrap__gwas_get_chromosomes)
+}
+
+#' Get a specific chromosome
+#' @param chromosome Chromosome identifier (1-22, X, Y, MT mapped to 23, 24, 25)
+#' @export
+gwas_get_chromosome <- function(chromosome) {
+  .Call(wrap__gwas_get_chromosome, chromosome)
 }
 
 #' Get associations for a specific chromosome
@@ -61,6 +80,13 @@ gwas_get_studies <- function(start = NULL, size = NULL) {
   .Call(wrap__gwas_get_studies, start, size)
 }
 
+#' Get a specific study
+#' @param study_accession Study accession ID
+#' @export
+gwas_get_study <- function(study_accession) {
+  .Call(wrap__gwas_get_study, study_accession)
+}
+
 #' Get associations for a specific study
 #' @param study_accession Study accession ID
 #' @param start Offset number (default: 0)
@@ -79,6 +105,13 @@ gwas_get_study_associations <- function(study_accession, start = NULL, size = NU
 #' @export
 gwas_get_traits <- function(start = NULL, size = NULL) {
   .Call(wrap__gwas_get_traits, start, size)
+}
+
+#' Get a specific trait
+#' @param trait_id Trait identifier
+#' @export
+gwas_get_trait <- function(trait_id) {
+  .Call(wrap__gwas_get_trait, trait_id)
 }
 
 #' Get associations for a specific trait
@@ -100,6 +133,14 @@ gwas_get_trait_associations <- function(trait_id, start = NULL, size = NULL, rev
 #' @export
 gwas_get_trait_studies <- function(trait_id, start = NULL, size = NULL) {
   .Call(wrap__gwas_get_trait_studies, trait_id, start, size)
+}
+
+#' Get a specific study for a trait
+#' @param trait_id Trait identifier
+#' @param study_accession Study accession ID
+#' @export
+gwas_get_trait_study <- function(trait_id, study_accession) {
+  .Call(wrap__gwas_get_trait_study, trait_id, study_accession)
 }
 
 #' Get associations for a specific trait and study
