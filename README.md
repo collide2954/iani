@@ -197,6 +197,41 @@ trait_study_assoc <- gwas_get_trait_study_associations(
 )
 ```
 
+### Downloading Full Summary Statistics
+
+You can list and download full summary statistics files for a given study, trait, or trait-study combination. You can also download one or more files in parallel using `gwas_download_summary_stats_files()`.
+
+```r
+# List available summary statistics files for a study
+files_json <- gwas_list_summary_stats_files("GCST005038")
+files <- jsonlite::fromJSON(files_json)
+print(files)
+
+# List available summary statistics files for a trait
+trait_files_json <- gwas_list_trait_summary_stats_files("EFO_0003785")
+trait_files <- jsonlite::fromJSON(trait_files_json)
+print(trait_files)
+
+# List available summary statistics files for a trait-study combination
+trait_study_files_json <- gwas_list_trait_study_summary_stats_files("EFO_0003785", "GCST005038")
+trait_study_files <- jsonlite::fromJSON(trait_study_files_json)
+print(trait_study_files)
+
+# Download a single summary statistics file (using the download_url from the listing)
+gwas_download_summary_stats_files(
+  file_urls = c("https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005038.tsv.gz"),
+  output_paths = c("GCST005038.tsv.gz")
+)
+
+# Download multiple summary statistics files in parallel
+urls <- c(
+  "https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005038.tsv.gz",
+  "https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005039.tsv.gz"
+)
+paths <- c("GCST005038.tsv.gz", "GCST005039.tsv.gz")
+gwas_download_summary_stats_files(urls, paths, max_concurrent = 4)
+```
+
 ### Advanced Filtering
 
 ```r

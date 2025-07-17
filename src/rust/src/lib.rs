@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use anyhow::Result;
 use url::Url;
+use std::fs;
+use std::path::Path;
 
 // Data structures for GWAS API responses
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,6 +61,19 @@ pub struct Study {
 pub struct Trait {
     #[serde(rename = "trait")]
     pub trait_name: String,
+    #[serde(rename = "_links")]
+    pub links: Option<HashMap<String, Link>>,
+}
+
+// Data structure for summary statistics files
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SummaryStatsFile {
+    pub study_accession: String,
+    pub trait_id: Option<String>,
+    pub file_path: String,
+    pub file_size: Option<i64>,
+    pub file_type: Option<String>,
+    pub download_url: Option<String>,
     #[serde(rename = "_links")]
     pub links: Option<HashMap<String, Link>>,
 }
@@ -223,6 +238,46 @@ impl GwasClient {
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
+    }
+
+    // Get summary statistics files for a study
+    pub fn get_study_summary_stats_files(&self, study_accession: &str) -> Result<HalResponse<Vec<SummaryStatsFile>>> {
+        let endpoint = format!("/studies/{study_accession}/summary-statistics");
+        let url = self.build_url(&endpoint, &HashMap::new())?;
+        let response = self.client.get(url).send()?;
+        let data: HalResponse<Vec<SummaryStatsFile>> = response.json()?;
+        Ok(data)
+    }
+
+    // Get summary statistics files for a trait
+    pub fn get_trait_summary_stats_files(&self, trait_id: &str) -> Result<HalResponse<Vec<SummaryStatsFile>>> {
+        let endpoint = format!("/traits/{trait_id}/summary-statistics");
+        let url = self.build_url(&endpoint, &HashMap::new())?;
+        let response = self.client.get(url).send()?;
+        let data: HalResponse<Vec<SummaryStatsFile>> = response.json()?;
+        Ok(data)
+    }
+
+    // Get summary statistics files for a trait-study combination
+    pub fn get_trait_study_summary_stats_files(&self, trait_id: &str, study_accession: &str) -> Result<HalResponse<Vec<SummaryStatsFile>>> {
+        let endpoint = format!("/traits/{trait_id}/studies/{study_accession}/summary-statistics");
+        let url = self.build_url(&endpoint, &HashMap::new())?;
+        let response = self.client.get(url).send()?;
+        let data: HalResponse<Vec<SummaryStatsFile>> = response.json()?;
+        Ok(data)
+    }
+
+    // Download a summary statistics file
+    pub fn download_summary_stats_file(&self, file_url: &str, output_path: &str) -> Result<String> {
+        let mut response = self.client.get(file_url).send()?;
+        // Create directory if it doesn't exist
+        if let Some(parent) = Path::new(output_path).parent() {
+            fs::create_dir_all(parent)?;
+        }
+        // Write file
+        let mut file = fs::File::create(output_path)?;
+        std::io::copy(&mut response, &mut file)?;
+        Ok(output_path.to_string())
     }
 }
 
@@ -655,6 +710,100 @@ fn gwas_get_trait_study_associations(
     }
 }
 
+/// List summary statistics files for a study
+/// @param study_accession Study accession ID
+/// @export
+#[extendr]
+fn gwas_list_summary_stats_files(study_accession: String) -> String {
+    let client = match GwasClient::new() {
+        Ok(c) => c,
+        Err(e) => return format!("Error creating client: {e}"),
+    };
+    match client.get_study_summary_stats_files(&study_accession) {
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching summary statistics files: {e}"),
+    }
+}
+
+/// Download multiple summary statistics files in parallel
+/// @param file_urls Vector of file URLs to download
+/// @param output_paths Vector of output paths (must match length of file_urls)
+/// @param max_concurrent Maximum number of concurrent downloads (default:4
+/// @export
+#[extendr]
+fn gwas_download_summary_stats_files(file_urls: Vec<String>, output_paths: Vec<String>, max_concurrent: Option<usize>) -> String {
+    if file_urls.len() != output_paths.len() {
+        return "Error: file_urls and output_paths must have the same length.".to_string();
+    }
+    
+    let max_concurrent = max_concurrent.unwrap_or(4);
+    let client = match GwasClient::new() {
+        Ok(c) => c,
+        Err(e) => return format!("Error creating client: {e}"),
+    };
+    
+    // Use rayon for parallel processing
+    use rayon::prelude::*;
+    
+    let results: Vec<Result<String, String>> = file_urls
+        .par_iter()
+        .zip(output_paths.par_iter())
+        .map(|(url, path)| {
+            match client.download_summary_stats_file(url, path) {
+                Ok(p) => Ok(format!("Downloaded: {p}")),
+                Err(e) => Err(format!("Failed to download {url}: {e}"))
+            }
+        })
+        .collect();
+    
+    // Format results
+    let mut success_count = 0;
+    let mut error_messages = Vec::new();
+    
+    for result in results {
+        match result {
+            Ok(msg) => success_count += 1,
+            Err(err) => error_messages.push(err)
+        }
+    }
+    
+    format!("Downloaded {} of {} files successfully.\n{}", 
+            success_count, 
+            file_urls.len(), 
+            error_messages.join("\n"))
+}
+
+/// List summary statistics files for a trait
+/// @param trait_id Trait identifier
+/// @export
+#[extendr]
+fn gwas_list_trait_summary_stats_files(trait_id: String) -> String {
+    let client = match GwasClient::new() {
+        Ok(c) => c,
+        Err(e) => return format!("Error creating client: {e}"),
+    };
+    match client.get_trait_summary_stats_files(&trait_id) {
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait summary statistics files: {e}"),
+    }
+}
+
+/// List summary statistics files for a trait-study combination
+/// @param trait_id Trait identifier
+/// @param study_accession Study accession ID
+/// @export
+#[extendr]
+fn gwas_list_trait_study_summary_stats_files(trait_id: String, study_accession: String) -> String {
+    let client = match GwasClient::new() {
+        Ok(c) => c,
+        Err(e) => return format!("Error creating client: {e}"),
+    };
+    match client.get_trait_study_summary_stats_files(&trait_id, &study_accession) {
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait-study summary statistics files: {e}"),
+    }
+}
+
 // Macro to generate exports.
 // This ensures exported functions are registered with R.
 // See corresponding C code in `entrypoint.c`.
@@ -676,4 +825,8 @@ extendr_module! {
     fn gwas_get_trait_studies;
     fn gwas_get_trait_study;
     fn gwas_get_trait_study_associations;
+    fn gwas_list_summary_stats_files;
+    fn gwas_list_trait_summary_stats_files;
+    fn gwas_list_trait_study_summary_stats_files;
+    fn gwas_download_summary_stats_files;
 }

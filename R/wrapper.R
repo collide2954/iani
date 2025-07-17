@@ -155,3 +155,34 @@ gwas_get_trait_study <- function(trait_id, study_accession) {
 gwas_get_trait_study_associations <- function(trait_id, study_accession, start = NULL, size = NULL, reveal = NULL, p_lower = NULL, p_upper = NULL) {
   .Call(wrap__gwas_get_trait_study_associations, trait_id, study_accession, start, size, reveal, p_lower, p_upper)
 }
+
+#' List summary statistics files for a study
+#' @param study_accession Study accession ID
+#' @export
+gwas_list_summary_stats_files <- function(study_accession) {
+  .Call(wrap__gwas_list_summary_stats_files, study_accession)
+}
+
+#' Download summary statistics files (single or multiple, in parallel)
+#' @param file_urls Character vector of file URLs to download (can be length 1)
+#' @param output_paths Character vector of output paths (must match length of file_urls)
+#' @param max_concurrent Maximum number of concurrent downloads (default: 4)
+#' @export
+gwas_download_summary_stats_files <- function(file_urls, output_paths, max_concurrent = 4) {
+  .Call(wrap__gwas_download_summary_stats_files, file_urls, output_paths, max_concurrent)
+}
+
+#' List summary statistics files for a trait
+#' @param trait_id Trait identifier
+#' @export
+gwas_list_trait_summary_stats_files <- function(trait_id) {
+  .Call(wrap__gwas_list_trait_summary_stats_files, trait_id)
+}
+
+#' List summary statistics files for a trait-study combination
+#' @param trait_id Trait identifier
+#' @param study_accession Study accession ID
+#' @export
+gwas_list_trait_study_summary_stats_files <- function(trait_id, study_accession) {
+  .Call(wrap__gwas_list_trait_study_summary_stats_files, trait_id, study_accession)
+}
