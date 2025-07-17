@@ -79,3 +79,4 @@ Cargo.lock
 
 man
 /R/extendr-wrappers.R
+.vscode/settings.json
