@@ -109,10 +109,32 @@ impl GwasClient {
         Ok(url)
     }
 
+    // Helper function to check HTTP response and validate JSON content type
+    fn check_json_response(&self, response: reqwest::blocking::Response) -> Result<reqwest::blocking::Response> {
+        // Check if response is successful
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().unwrap_or_else(|_| "Unable to read response body".to_string());
+            return Err(anyhow::anyhow!("HTTP {}: {}", status, text));
+        }
+
+        // Check content type
+        if let Some(content_type) = response.headers().get("content-type") {
+            if let Ok(ct_str) = content_type.to_str() {
+                if !ct_str.contains("application/json") {
+                    return Err(anyhow::anyhow!("Expected JSON response, got: {}", ct_str));
+                }
+            }
+        }
+
+        Ok(response)
+    }
+
     // Get all associations
     pub fn get_associations(&self, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
         let url = self.build_url("/associations", &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -122,6 +144,7 @@ impl GwasClient {
         let endpoint = format!("/associations/{variant_id}");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -130,6 +153,7 @@ impl GwasClient {
     pub fn get_chromosomes(&self) -> Result<HalResponse<Vec<Chromosome>>> {
         let url = self.build_url("/chromosomes", &HashMap::new())?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<Chromosome>> = response.json()?;
         Ok(data)
     }
@@ -139,6 +163,7 @@ impl GwasClient {
         let endpoint = format!("/chromosomes/{chromosome}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: Chromosome = response.json()?;
         Ok(data)
     }
@@ -148,6 +173,7 @@ impl GwasClient {
         let endpoint = format!("/chromosomes/{chromosome}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -157,6 +183,7 @@ impl GwasClient {
         let endpoint = format!("/chromosomes/{chromosome}/associations/{variant_id}");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -165,6 +192,7 @@ impl GwasClient {
     pub fn get_studies(&self, params: HashMap<String, String>) -> Result<HalResponse<Vec<Vec<Study>>>> {
         let url = self.build_url("/studies", &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<Vec<Study>>> = response.json()?;
         Ok(data)
     }
@@ -174,6 +202,7 @@ impl GwasClient {
         let endpoint = format!("/studies/{study_accession}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: Study = response.json()?;
         Ok(data)
     }
@@ -183,6 +212,7 @@ impl GwasClient {
         let endpoint = format!("/studies/{study_accession}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -191,6 +221,7 @@ impl GwasClient {
     pub fn get_traits(&self, params: HashMap<String, String>) -> Result<HalResponse<Vec<Trait>>> {
         let url = self.build_url("/traits", &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<Trait>> = response.json()?;
         Ok(data)
     }
@@ -200,6 +231,7 @@ impl GwasClient {
         let endpoint = format!("/traits/{trait_id}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: Trait = response.json()?;
         Ok(data)
     }
@@ -209,6 +241,7 @@ impl GwasClient {
         let endpoint = format!("/traits/{trait_id}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -218,6 +251,7 @@ impl GwasClient {
         let endpoint = format!("/traits/{trait_id}/studies");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<Study>> = response.json()?;
         Ok(data)
     }
@@ -227,15 +261,17 @@ impl GwasClient {
         let endpoint = format!("/traits/{trait_id}/studies/{study_accession}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: Study = response.json()?;
         Ok(data)
     }
 
     // Get trait study associations
     pub fn get_trait_study_associations(&self, trait_id: &str, study_accession: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-            let endpoint = format!("/traits/{trait_id}/studies/{study_accession}/associations");
+        let endpoint = format!("/traits/{trait_id}/studies/{study_accession}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
+        let response = self.check_json_response(response)?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
         Ok(data)
     }
@@ -245,6 +281,8 @@ impl GwasClient {
         let endpoint = format!("/studies/{study_accession}/summary-statistics");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<SummaryStatsFile>> = response.json()?;
         Ok(data)
     }
@@ -254,6 +292,8 @@ impl GwasClient {
         let endpoint = format!("/traits/{trait_id}/summary-statistics");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<SummaryStatsFile>> = response.json()?;
         Ok(data)
     }
@@ -263,6 +303,8 @@ impl GwasClient {
         let endpoint = format!("/traits/{trait_id}/studies/{study_accession}/summary-statistics");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
+
+        let response = self.check_json_response(response)?;
         let data: HalResponse<Vec<SummaryStatsFile>> = response.json()?;
         Ok(data)
     }
@@ -728,49 +770,59 @@ fn gwas_list_summary_stats_files(study_accession: String) -> String {
 /// Download multiple summary statistics files in parallel
 /// @param file_urls Vector of file URLs to download
 /// @param output_paths Vector of output paths (must match length of file_urls)
-/// @param max_concurrent Maximum number of concurrent downloads (default:4
+/// @param max_concurrent Maximum number of concurrent downloads (default:4)
 /// @export
 #[extendr]
 fn gwas_download_summary_stats_files(file_urls: Vec<String>, output_paths: Vec<String>, max_concurrent: Option<usize>) -> String {
     if file_urls.len() != output_paths.len() {
         return "Error: file_urls and output_paths must have the same length.".to_string();
     }
-    
+
     let max_concurrent = max_concurrent.unwrap_or(4);
     let client = match GwasClient::new() {
         Ok(c) => c,
         Err(e) => return format!("Error creating client: {e}"),
     };
-    
-    // Use rayon for parallel processing
+
     use rayon::prelude::*;
-    
-    let results: Vec<Result<String, String>> = file_urls
-        .par_iter()
-        .zip(output_paths.par_iter())
-        .map(|(url, path)| {
-            match client.download_summary_stats_file(url, path) {
-                Ok(p) => Ok(format!("Downloaded: {p}")),
-                Err(e) => Err(format!("Failed to download {url}: {e}"))
-            }
-        })
-        .collect();
-    
+    use rayon::ThreadPoolBuilder;
+
+    // Build a custom thread pool with the desired number of threads
+    let pool = match ThreadPoolBuilder::new().num_threads(max_concurrent).build() {
+        Ok(p) => p,
+        Err(e) => return format!("Error creating thread pool: {e}"),
+    };
+
+    let results = pool.install(|| {
+        file_urls
+            .par_iter()
+            .zip(output_paths.par_iter())
+            .map(|(url, path)| {
+                match client.download_summary_stats_file(url, path) {
+                    Ok(p) => Ok(format!("Downloaded: {p}")),
+                    Err(e) => Err(format!("Failed to download {url}: {e}"))
+                }
+            })
+            .collect::<Vec<_>>()
+    });
+
     // Format results
     let mut success_count = 0;
     let mut error_messages = Vec::new();
-    
+
     for result in results {
         match result {
-            Ok(msg) => success_count += 1,
+            Ok(_) => success_count += 1,
             Err(err) => error_messages.push(err)
         }
     }
-    
-    format!("Downloaded {} of {} files successfully.\n{}", 
-            success_count, 
-            file_urls.len(), 
-            error_messages.join("\n"))
+
+    format!(
+        "Downloaded {} of {} files successfully.\n{}",
+        success_count,
+        file_urls.len(),
+        error_messages.join("\n")
+    )
 }
 
 /// List summary statistics files for a trait
