@@ -104,7 +104,7 @@ impl GwasClient {
 
     // Get associations for a specific variant
     pub fn get_variant_associations(&self, variant_id: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-        let endpoint = format!("/associations/{}", variant_id);
+        let endpoint = format!("/associations/{variant_id}");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
@@ -121,7 +121,7 @@ impl GwasClient {
 
     // Get specific chromosome
     pub fn get_chromosome(&self, chromosome: &str) -> Result<Chromosome> {
-        let endpoint = format!("/chromosomes/{}", chromosome);
+        let endpoint = format!("/chromosomes/{chromosome}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
         let data: Chromosome = response.json()?;
@@ -130,7 +130,7 @@ impl GwasClient {
 
     // Get associations for a chromosome
     pub fn get_chromosome_associations(&self, chromosome: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-        let endpoint = format!("/chromosomes/{}/associations", chromosome);
+        let endpoint = format!("/chromosomes/{chromosome}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
@@ -139,7 +139,7 @@ impl GwasClient {
 
     // Get variant associations on specific chromosome
     pub fn get_chromosome_variant_associations(&self, chromosome: &str, variant_id: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-        let endpoint = format!("/chromosomes/{}/associations/{}", chromosome, variant_id);
+        let endpoint = format!("/chromosomes/{chromosome}/associations/{variant_id}");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
@@ -156,7 +156,7 @@ impl GwasClient {
 
     // Get specific study
     pub fn get_study(&self, study_accession: &str) -> Result<Study> {
-        let endpoint = format!("/studies/{}", study_accession);
+        let endpoint = format!("/studies/{study_accession}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
         let data: Study = response.json()?;
@@ -165,7 +165,7 @@ impl GwasClient {
 
     // Get study associations
     pub fn get_study_associations(&self, study_accession: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-        let endpoint = format!("/studies/{}/associations", study_accession);
+        let endpoint = format!("/studies/{study_accession}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
@@ -182,7 +182,7 @@ impl GwasClient {
 
     // Get specific trait
     pub fn get_trait(&self, trait_id: &str) -> Result<Trait> {
-        let endpoint = format!("/traits/{}", trait_id);
+        let endpoint = format!("/traits/{trait_id}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
         let data: Trait = response.json()?;
@@ -191,7 +191,7 @@ impl GwasClient {
 
     // Get trait associations
     pub fn get_trait_associations(&self, trait_id: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-        let endpoint = format!("/traits/{}/associations", trait_id);
+        let endpoint = format!("/traits/{trait_id}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
@@ -200,7 +200,7 @@ impl GwasClient {
 
     // Get trait studies
     pub fn get_trait_studies(&self, trait_id: &str, params: HashMap<String, String>) -> Result<HalResponse<Vec<Study>>> {
-        let endpoint = format!("/traits/{}/studies", trait_id);
+        let endpoint = format!("/traits/{trait_id}/studies");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<Vec<Study>> = response.json()?;
@@ -209,7 +209,7 @@ impl GwasClient {
 
     // Get trait study
     pub fn get_trait_study(&self, trait_id: &str, study_accession: &str) -> Result<Study> {
-        let endpoint = format!("/traits/{}/studies/{}", trait_id, study_accession);
+        let endpoint = format!("/traits/{trait_id}/studies/{study_accession}");
         let url = self.build_url(&endpoint, &HashMap::new())?;
         let response = self.client.get(url).send()?;
         let data: Study = response.json()?;
@@ -218,7 +218,7 @@ impl GwasClient {
 
     // Get trait study associations
     pub fn get_trait_study_associations(&self, trait_id: &str, study_accession: &str, params: HashMap<String, String>) -> Result<HalResponse<HashMap<String, Association>>> {
-        let endpoint = format!("/traits/{}/studies/{}/associations", trait_id, study_accession);
+            let endpoint = format!("/traits/{trait_id}/studies/{study_accession}/associations");
         let url = self.build_url(&endpoint, &params)?;
         let response = self.client.get(url).send()?;
         let data: HalResponse<HashMap<String, Association>> = response.json()?;
@@ -233,7 +233,7 @@ impl GwasClient {
 fn gwas_client_new() -> String {
     match GwasClient::new() {
         Ok(_) => "GWAS client created successfully".to_string(),
-        Err(e) => format!("Error creating GWAS client: {}", e),
+        Err(e) => format!("Error creating GWAS client: {e}"),
     }
 }
 
@@ -254,7 +254,7 @@ fn gwas_get_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -265,8 +265,8 @@ fn gwas_get_associations(
     if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
 
     match client.get_associations(params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching associations: {e}"),
     }
 }
 
@@ -291,7 +291,7 @@ fn gwas_get_variant_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -303,8 +303,8 @@ fn gwas_get_variant_associations(
     if let Some(sa) = study_accession { params.insert("study_accession".to_string(), sa); }
 
     match client.get_variant_associations(&variant_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching variant associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching variant associations: {e}"),
     }
 }
 
@@ -314,12 +314,12 @@ fn gwas_get_variant_associations(
 fn gwas_get_chromosomes() -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     match client.get_chromosomes() {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching chromosomes: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching chromosomes: {e}"),
     }
 }
 
@@ -330,12 +330,12 @@ fn gwas_get_chromosomes() -> String {
 fn gwas_get_chromosome(chromosome: String) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     match client.get_chromosome(&chromosome) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching chromosome: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching chromosome: {e}"),
     }
 }
 
@@ -351,6 +351,7 @@ fn gwas_get_chromosome(chromosome: String) -> String {
 /// @param study_accession Specific study accession
 /// @param trait_name Specific trait ID
 /// @export
+#[allow(clippy::too_many_arguments)] 
 #[extendr]
 fn gwas_get_chromosome_associations(
     chromosome: String,
@@ -366,7 +367,7 @@ fn gwas_get_chromosome_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -381,8 +382,8 @@ fn gwas_get_chromosome_associations(
     if let Some(t) = trait_name { params.insert("trait".to_string(), t); }
 
     match client.get_chromosome_associations(&chromosome, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching chromosome associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching chromosome associations: {e}"),
     }
 }
 
@@ -397,6 +398,7 @@ fn gwas_get_chromosome_associations(
 /// @param study_accession Specific study accession
 /// @param trait_name Specific trait ID
 /// @export
+#[allow(clippy::too_many_arguments)] 
 #[extendr]
 fn gwas_get_chromosome_variant_associations(
     chromosome: String,
@@ -411,7 +413,7 @@ fn gwas_get_chromosome_variant_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -424,8 +426,8 @@ fn gwas_get_chromosome_variant_associations(
     if let Some(t) = trait_name { params.insert("trait".to_string(), t); }
 
     match client.get_chromosome_variant_associations(&chromosome, &variant_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching chromosome variant associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching chromosome variant associations: {e}"),
     }
 }
 
@@ -437,7 +439,7 @@ fn gwas_get_chromosome_variant_associations(
 fn gwas_get_studies(start: Option<i32>, size: Option<i32>) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -445,8 +447,8 @@ fn gwas_get_studies(start: Option<i32>, size: Option<i32>) -> String {
     if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
 
     match client.get_studies(params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching studies: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching studies: {e}"),
     }
 }
 
@@ -457,12 +459,12 @@ fn gwas_get_studies(start: Option<i32>, size: Option<i32>) -> String {
 fn gwas_get_study(study_accession: String) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     match client.get_study(&study_accession) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching study: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching study: {e}"),
     }
 }
 
@@ -485,7 +487,7 @@ fn gwas_get_study_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -496,8 +498,8 @@ fn gwas_get_study_associations(
     if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
 
     match client.get_study_associations(&study_accession, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching study associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching study associations: {e}"),
     }
 }
 
@@ -509,7 +511,7 @@ fn gwas_get_study_associations(
 fn gwas_get_traits(start: Option<i32>, size: Option<i32>) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -517,8 +519,8 @@ fn gwas_get_traits(start: Option<i32>, size: Option<i32>) -> String {
     if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
 
     match client.get_traits(params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching traits: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching traits: {e}"),
     }
 }
 
@@ -529,12 +531,12 @@ fn gwas_get_traits(start: Option<i32>, size: Option<i32>) -> String {
 fn gwas_get_trait(trait_id: String) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     match client.get_trait(&trait_id) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching trait: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait: {e}"),
     }
 }
 
@@ -557,7 +559,7 @@ fn gwas_get_trait_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -568,8 +570,8 @@ fn gwas_get_trait_associations(
     if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
 
     match client.get_trait_associations(&trait_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching trait associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait associations: {e}"),
     }
 }
 
@@ -586,7 +588,7 @@ fn gwas_get_trait_studies(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -594,8 +596,8 @@ fn gwas_get_trait_studies(
     if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
 
     match client.get_trait_studies(&trait_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching trait studies: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait studies: {e}"),
     }
 }
 
@@ -607,12 +609,12 @@ fn gwas_get_trait_studies(
 fn gwas_get_trait_study(trait_id: String, study_accession: String) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     match client.get_trait_study(&trait_id, &study_accession) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching trait study: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait study: {e}"),
     }
 }
 
@@ -637,7 +639,7 @@ fn gwas_get_trait_study_associations(
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
-        Err(e) => return format!("Error creating client: {}", e),
+        Err(e) => return format!("Error creating client: {e}"),
     };
 
     let mut params = HashMap::new();
@@ -648,8 +650,8 @@ fn gwas_get_trait_study_associations(
     if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
 
     match client.get_trait_study_associations(&trait_id, &study_accession, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {}", e)),
-        Err(e) => format!("Error fetching trait study associations: {}", e),
+        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
+        Err(e) => format!("Error fetching trait study associations: {e}"),
     }
 }
 
