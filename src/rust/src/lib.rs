@@ -78,6 +78,56 @@ pub struct SummaryStatsFile {
     pub links: Option<HashMap<String, Link>>,
 }
 
+// Filter structure for simplified API
+#[derive(Debug, Default)]
+pub struct GwasFilter {
+    pub p_value_range: Option<(String, String)>,
+    pub bp_location_range: Option<(i64, i64)>,
+    pub study: Option<String>,
+    pub trait_id: Option<String>,
+    pub reveal: Option<String>,
+    pub start: Option<i32>,
+    pub size: Option<i32>,
+}
+
+impl GwasFilter {
+    pub fn to_params(&self) -> HashMap<String, String> {
+        let mut params = HashMap::new();
+        
+        if let Some((lower, upper)) = &self.p_value_range {
+            params.insert("p_lower".to_string(), lower.clone());
+            params.insert("p_upper".to_string(), upper.clone());
+        }
+        
+        if let Some((lower, upper)) = &self.bp_location_range {
+            params.insert("bp_lower".to_string(), lower.to_string());
+            params.insert("bp_upper".to_string(), upper.to_string());
+        }
+        
+        if let Some(study) = &self.study {
+            params.insert("study_accession".to_string(), study.clone());
+        }
+        
+        if let Some(trait_id) = &self.trait_id {
+            params.insert("trait".to_string(), trait_id.clone());
+        }
+        
+        if let Some(reveal) = &self.reveal {
+            params.insert("reveal".to_string(), reveal.clone());
+        }
+        
+        if let Some(start) = self.start {
+            params.insert("start".to_string(), start.to_string());
+        }
+        
+        if let Some(size) = self.size {
+            params.insert("size".to_string(), size.to_string());
+        }
+        
+        params
+    }
+}
+
 // GWAS API Client
 #[derive(Debug, Clone)]
 pub struct GwasClient {
@@ -321,365 +371,102 @@ impl GwasClient {
         std::io::copy(&mut response, &mut file)?;
         Ok(output_path.to_string())
     }
-}
 
-// R interface functions
-/// Create a new GWAS API client
-/// @export
-#[extendr]
-fn gwas_client_new() -> String {
-    match GwasClient::new() {
-        Ok(_) => "GWAS client created successfully".to_string(),
-        Err(e) => format!("Error creating GWAS client: {e}"),
+    // Unified get method for entities
+    pub fn get_entity(&self, entity_type: &str, id: Option<&str>, filter: &GwasFilter) -> Result<String> {
+        let params = filter.to_params();
+        
+        match entity_type {
+            "chromosomes" => {
+                if let Some(chromosome_id) = id {
+                    match self.get_chromosome(chromosome_id) {
+                        Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    match self.get_chromosomes() {
+                        Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+                        Err(e) => Err(e),
+                    }
+                }
+            },
+            "studies" => {
+                if let Some(study_id) = id {
+                    match self.get_study(study_id) {
+                        Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    match self.get_studies(params) {
+                        Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+                        Err(e) => Err(e),
+                    }
+                }
+            },
+            "traits" => {
+                if let Some(trait_id) = id {
+                    match self.get_trait(trait_id) {
+                        Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    match self.get_traits(params) {
+                        Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+                        Err(e) => Err(e),
+                    }
+                }
+            },
+            _ => Err(anyhow::anyhow!("Invalid entity type: {}", entity_type))
+        }
+    }
+
+    // Unified associations method
+    pub fn get_unified_associations(&self, entity_type: Option<&str>, entity_id: Option<&str>, filter: &GwasFilter) -> Result<String> {
+        let params = filter.to_params();
+        
+        let result = match (entity_type, entity_id) {
+            (None, None) => self.get_associations(params),
+            (Some("variant"), Some(variant_id)) => self.get_variant_associations(variant_id, params),
+            (Some("chromosome"), Some(chromosome_id)) => self.get_chromosome_associations(chromosome_id, params),
+            (Some("study"), Some(study_id)) => self.get_study_associations(study_id, params),
+            (Some("trait"), Some(trait_id)) => self.get_trait_associations(trait_id, params),
+            _ => return Err(anyhow::anyhow!("Invalid entity type or missing ID")),
+        };
+        
+        match result {
+            Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+            Err(e) => Err(e),
+        }
+    }
+
+    // Unified file operations
+    pub fn list_files(&self, entity_type: &str, entity_id: &str, secondary_id: Option<&str>) -> Result<String> {
+        let result = match (entity_type, secondary_id) {
+            ("study", None) => self.get_study_summary_stats_files(entity_id),
+            ("trait", None) => self.get_trait_summary_stats_files(entity_id),
+            ("trait", Some(study_id)) => self.get_trait_study_summary_stats_files(entity_id, study_id),
+            _ => return Err(anyhow::anyhow!("Invalid file entity type or parameters")),
+        };
+        
+        match result {
+            Ok(data) => Ok(serde_json::to_string_pretty(&data)?),
+            Err(e) => Err(e),
+        }
     }
 }
 
-/// Get all associations with optional parameters
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
-/// @export
-#[extendr]
-fn gwas_get_associations(
-    start: Option<i32>,
-    size: Option<i32>,
-    reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>
-) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
+// SIMPLIFIED API FUNCTIONS
 
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-
-    match client.get_associations(params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching associations: {e}"),
-    }
-}
-
-/// Get associations for a specific variant
-/// @param variant_id The rsid of the variant
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
-/// @param study_accession Specific study accession
-/// @export
-#[extendr]
-fn gwas_get_variant_associations(
-    variant_id: String,
-    start: Option<i32>,
-    size: Option<i32>,
-    reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>,
-    study_accession: Option<String>
-) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-    if let Some(sa) = study_accession { params.insert("study_accession".to_string(), sa); }
-
-    match client.get_variant_associations(&variant_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching variant associations: {e}"),
-    }
-}
-
-/// Get all chromosomes
-/// @export
-#[extendr]
-fn gwas_get_chromosomes() -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    match client.get_chromosomes() {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching chromosomes: {e}"),
-    }
-}
-
-/// Get a specific chromosome
-/// @param chromosome Chromosome identifier (1-22, X, Y, MT mapped to 23, 24, 25)
-/// @export
-#[extendr]
-fn gwas_get_chromosome(chromosome: String) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    match client.get_chromosome(&chromosome) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching chromosome: {e}"),
-    }
-}
-
-/// Get associations for a specific chromosome
-/// @param chromosome Chromosome identifier
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
-/// @param bp_lower Lower base pair location threshold
-/// @param bp_upper Upper base pair location threshold
-/// @param study_accession Specific study accession
-/// @param trait_name Specific trait ID
-/// @export
-#[allow(clippy::too_many_arguments)] 
-#[extendr]
-fn gwas_get_chromosome_associations(
-    chromosome: String,
-    start: Option<i32>,
-    size: Option<i32>,
-    reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>,
-    bp_lower: Option<i64>,
-    bp_upper: Option<i64>,
-    study_accession: Option<String>,
-    trait_name: Option<String>
-) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-    if let Some(bp) = bp_lower { params.insert("bp_lower".to_string(), bp.to_string()); }
-    if let Some(bp) = bp_upper { params.insert("bp_upper".to_string(), bp.to_string()); }
-    if let Some(sa) = study_accession { params.insert("study_accession".to_string(), sa); }
-    if let Some(t) = trait_name { params.insert("trait".to_string(), t); }
-
-    match client.get_chromosome_associations(&chromosome, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching chromosome associations: {e}"),
-    }
-}
-
-/// Get associations for a variant on a specific chromosome
-/// @param chromosome Chromosome identifier
-/// @param variant_id The rsid of the variant
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
-/// @param study_accession Specific study accession
-/// @param trait_name Specific trait ID
-/// @export
-#[allow(clippy::too_many_arguments)] 
-#[extendr]
-fn gwas_get_chromosome_variant_associations(
-    chromosome: String,
-    variant_id: String,
-    start: Option<i32>,
-    size: Option<i32>,
-    reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>,
-    study_accession: Option<String>,
-    trait_name: Option<String>
-) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-    if let Some(sa) = study_accession { params.insert("study_accession".to_string(), sa); }
-    if let Some(t) = trait_name { params.insert("trait".to_string(), t); }
-
-    match client.get_chromosome_variant_associations(&chromosome, &variant_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching chromosome variant associations: {e}"),
-    }
-}
-
-/// Get all studies
+/// Unified get function for entities (chromosomes, studies, traits)
+/// @param entity_type Type of entity: "chromosomes", "studies", or "traits"
+/// @param id Optional entity ID for specific entity
 /// @param start Offset number (default: 0)
 /// @param size Number of items returned (default: 20)
 /// @export
 #[extendr]
-fn gwas_get_studies(start: Option<i32>, size: Option<i32>) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-
-    match client.get_studies(params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching studies: {e}"),
-    }
-}
-
-/// Get a specific study
-/// @param study_accession Study accession ID
-/// @export
-#[extendr]
-fn gwas_get_study(study_accession: String) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    match client.get_study(&study_accession) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching study: {e}"),
-    }
-}
-
-/// Get associations for a specific study
-/// @param study_accession Study accession ID
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
-/// @export
-#[extendr]
-fn gwas_get_study_associations(
-    study_accession: String,
-    start: Option<i32>,
-    size: Option<i32>,
-    reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>
-) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-
-    match client.get_study_associations(&study_accession, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching study associations: {e}"),
-    }
-}
-
-/// Get all traits
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @export
-#[extendr]
-fn gwas_get_traits(start: Option<i32>, size: Option<i32>) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-
-    match client.get_traits(params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching traits: {e}"),
-    }
-}
-
-/// Get a specific trait
-/// @param trait_id Trait identifier
-/// @export
-#[extendr]
-fn gwas_get_trait(trait_id: String) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    match client.get_trait(&trait_id) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait: {e}"),
-    }
-}
-
-/// Get associations for a specific trait
-/// @param trait_id Trait identifier
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
-/// @export
-#[extendr]
-fn gwas_get_trait_associations(
-    trait_id: String,
-    start: Option<i32>,
-    size: Option<i32>,
-    reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>
-) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-
-    match client.get_trait_associations(&trait_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait associations: {e}"),
-    }
-}
-
-/// Get studies for a specific trait
-/// @param trait_id Trait identifier
-/// @param start Offset number (default: 0)
-/// @param size Number of items returned (default: 20)
-/// @export
-#[extendr]
-fn gwas_get_trait_studies(
-    trait_id: String,
+fn gwas_get(
+    entity_type: String,
+    id: Option<String>,
     start: Option<i32>,
     size: Option<i32>
 ) -> String {
@@ -687,172 +474,169 @@ fn gwas_get_trait_studies(
         Ok(c) => c,
         Err(e) => return format!("Error creating client: {e}"),
     };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-
-    match client.get_trait_studies(&trait_id, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait studies: {e}"),
-    }
-}
-
-/// Get a specific study for a trait
-/// @param trait_id Trait identifier
-/// @param study_accession Study accession ID
-/// @export
-#[extendr]
-fn gwas_get_trait_study(trait_id: String, study_accession: String) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
+    
+    let filter = GwasFilter {
+        start,
+        size,
+        ..Default::default()
     };
-
-    match client.get_trait_study(&trait_id, &study_accession) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait study: {e}"),
+    
+    match client.get_entity(&entity_type, id.as_deref(), &filter) {
+        Ok(data) => data,
+        Err(e) => format!("Error fetching {entity_type}: {e}"),
     }
 }
 
-/// Get associations for a specific trait and study
-/// @param trait_id Trait identifier
-/// @param study_accession Study accession ID
+/// Unified associations function with filtering
+/// @param entity_type Optional entity type: "variant", "chromosome", "study", "trait"
+/// @param entity_id Optional entity ID
+/// @param p_value_min Optional minimum p-value threshold
+/// @param p_value_max Optional maximum p-value threshold
+/// @param bp_min Optional minimum base pair location
+/// @param bp_max Optional maximum base pair location
+/// @param study Optional study accession filter
+/// @param trait_id Optional trait ID filter
+/// @param reveal Optional reveal mode ("raw" or "all")
 /// @param start Offset number (default: 0)
 /// @param size Number of items returned (default: 20)
-/// @param reveal Show raw/all data ("raw" or "all")
-/// @param p_lower Lower p-value threshold
-/// @param p_upper Upper p-value threshold
 /// @export
+#[allow(clippy::too_many_arguments)]
 #[extendr]
-fn gwas_get_trait_study_associations(
-    trait_id: String,
-    study_accession: String,
-    start: Option<i32>,
-    size: Option<i32>,
+fn gwas_associations(
+    entity_type: Option<String>,
+    entity_id: Option<String>,
+    p_value_min: Option<String>,
+    p_value_max: Option<String>,
+    bp_min: Option<i64>,
+    bp_max: Option<i64>,
+    study: Option<String>,
+    trait_id: Option<String>,
     reveal: Option<String>,
-    p_lower: Option<String>,
-    p_upper: Option<String>
+    start: Option<i32>,
+    size: Option<i32>
 ) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
         Err(e) => return format!("Error creating client: {e}"),
     };
-
-    let mut params = HashMap::new();
-    if let Some(s) = start { params.insert("start".to_string(), s.to_string()); }
-    if let Some(s) = size { params.insert("size".to_string(), s.to_string()); }
-    if let Some(r) = reveal { params.insert("reveal".to_string(), r); }
-    if let Some(p) = p_lower { params.insert("p_lower".to_string(), p); }
-    if let Some(p) = p_upper { params.insert("p_upper".to_string(), p); }
-
-    match client.get_trait_study_associations(&trait_id, &study_accession, params) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait study associations: {e}"),
+    
+    let p_value_range = match (p_value_min, p_value_max) {
+        (Some(min), Some(max)) => Some((min, max)),
+        (Some(min), None) => Some((min, "1.0".to_string())),
+        (None, Some(max)) => Some(("0.0".to_string(), max)),
+        (None, None) => None,
+    };
+    
+    let bp_location_range = match (bp_min, bp_max) {
+        (Some(min), Some(max)) => Some((min, max)),
+        _ => None,
+    };
+    
+    let filter = GwasFilter {
+        p_value_range,
+        bp_location_range,
+        study,
+        trait_id,
+        reveal,
+        start,
+        size,
+    };
+    
+    match client.get_unified_associations(
+        entity_type.as_deref(),
+        entity_id.as_deref(),
+        &filter
+    ) {
+        Ok(data) => data,
+        Err(e) => format!("Error fetching associations: {e}"),
     }
 }
 
-/// List summary statistics files for a study
-/// @param study_accession Study accession ID
+/// Unified file operations (list and download)
+/// @param operation Operation type: "list" or "download"
+/// @param entity_type Entity type: "study" or "trait"
+/// @param entity_id Primary entity ID
+/// @param secondary_id Optional secondary ID (for trait-study combinations)
+/// @param file_urls Optional vector of file URLs (for download)
+/// @param output_paths Optional vector of output paths (for download)
+/// @param max_concurrent Optional max concurrent downloads (default: 4)
 /// @export
+#[allow(clippy::too_many_arguments)]
 #[extendr]
-fn gwas_list_summary_stats_files(study_accession: String) -> String {
+fn gwas_files(
+    operation: String,
+    entity_type: String,
+    entity_id: String,
+    secondary_id: Option<String>,
+    file_urls: Option<Vec<String>>,
+    output_paths: Option<Vec<String>>,
+    max_concurrent: Option<usize>
+) -> String {
     let client = match GwasClient::new() {
         Ok(c) => c,
         Err(e) => return format!("Error creating client: {e}"),
     };
-    match client.get_study_summary_stats_files(&study_accession) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching summary statistics files: {e}"),
-    }
-}
-
-/// Download multiple summary statistics files in parallel
-/// @param file_urls Vector of file URLs to download
-/// @param output_paths Vector of output paths (must match length of file_urls)
-/// @param max_concurrent Maximum number of concurrent downloads (default:4)
-/// @export
-#[extendr]
-fn gwas_download_summary_stats_files(file_urls: Vec<String>, output_paths: Vec<String>, max_concurrent: Option<usize>) -> String {
-    if file_urls.len() != output_paths.len() {
-        return "Error: file_urls and output_paths must have the same length.".to_string();
-    }
-
-    let max_concurrent = max_concurrent.unwrap_or(4);
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-
-    use rayon::prelude::*;
-    use rayon::ThreadPoolBuilder;
-
-    // Build a custom thread pool with the desired number of threads
-    let pool = match ThreadPoolBuilder::new().num_threads(max_concurrent).build() {
-        Ok(p) => p,
-        Err(e) => return format!("Error creating thread pool: {e}"),
-    };
-
-    let results = pool.install(|| {
-        file_urls
-            .par_iter()
-            .zip(output_paths.par_iter())
-            .map(|(url, path)| {
-                match client.download_summary_stats_file(url, path) {
-                    Ok(p) => Ok(format!("Downloaded: {p}")),
-                    Err(e) => Err(format!("Failed to download {url}: {e}"))
-                }
-            })
-            .collect::<Vec<_>>()
-    });
-
-    // Format results
-    let mut success_count = 0;
-    let mut error_messages = Vec::new();
-
-    for result in results {
-        match result {
-            Ok(_) => success_count += 1,
-            Err(err) => error_messages.push(err)
-        }
-    }
-
-    format!(
-        "Downloaded {} of {} files successfully.\n{}",
-        success_count,
-        file_urls.len(),
-        error_messages.join("\n")
-    )
-}
-
-/// List summary statistics files for a trait
-/// @param trait_id Trait identifier
-/// @export
-#[extendr]
-fn gwas_list_trait_summary_stats_files(trait_id: String) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-    match client.get_trait_summary_stats_files(&trait_id) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait summary statistics files: {e}"),
-    }
-}
-
-/// List summary statistics files for a trait-study combination
-/// @param trait_id Trait identifier
-/// @param study_accession Study accession ID
-/// @export
-#[extendr]
-fn gwas_list_trait_study_summary_stats_files(trait_id: String, study_accession: String) -> String {
-    let client = match GwasClient::new() {
-        Ok(c) => c,
-        Err(e) => return format!("Error creating client: {e}"),
-    };
-    match client.get_trait_study_summary_stats_files(&trait_id, &study_accession) {
-        Ok(data) => serde_json::to_string_pretty(&data).unwrap_or_else(|e| format!("Serialization error: {e}")),
-        Err(e) => format!("Error fetching trait-study summary statistics files: {e}"),
+    
+    match operation.as_str() {
+        "list" => {
+            match client.list_files(&entity_type, &entity_id, secondary_id.as_deref()) {
+                Ok(data) => data,
+                Err(e) => format!("Error listing files: {e}"),
+            }
+        },
+        "download" => {
+            match (file_urls, output_paths) {
+                (Some(urls), Some(paths)) => {
+                    if urls.len() != paths.len() {
+                        return "Error: file_urls and output_paths must have the same length.".to_string();
+                    }
+                    
+                    let max_concurrent = max_concurrent.unwrap_or(4);
+                    
+                    use rayon::prelude::*;
+                    use rayon::ThreadPoolBuilder;
+                    
+                    // Build a custom thread pool with the desired number of threads
+                    let pool = match ThreadPoolBuilder::new().num_threads(max_concurrent).build() {
+                        Ok(p) => p,
+                        Err(e) => return format!("Error creating thread pool: {e}"),
+                    };
+                    
+                    let results = pool.install(|| {
+                        urls
+                            .par_iter()
+                            .zip(paths.par_iter())
+                            .map(|(url, path)| {
+                                match client.download_summary_stats_file(url, path) {
+                                    Ok(p) => Ok(format!("Downloaded: {p}")),
+                                    Err(e) => Err(format!("Failed to download {url}: {e}"))
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    });
+                    
+                    // Format results
+                    let mut success_count = 0;
+                    let mut error_messages = Vec::new();
+                    
+                    for result in results {
+                        match result {
+                            Ok(_) => success_count += 1,
+                            Err(err) => error_messages.push(err)
+                        }
+                    }
+                    
+                    format!(
+                        "Downloaded {} of {} files successfully.\n{}",
+                        success_count,
+                        urls.len(),
+                        error_messages.join("\n")
+                    )
+                },
+                _ => "Error: file_urls and output_paths required for download operation".to_string(),
+            }
+        },
+        _ => format!("Invalid operation: {operation}. Use 'list' or 'download'"),
     }
 }
 
@@ -861,24 +645,7 @@ fn gwas_list_trait_study_summary_stats_files(trait_id: String, study_accession: 
 // See corresponding C code in `entrypoint.c`.
 extendr_module! {
     mod iani;
-    fn gwas_client_new;
-    fn gwas_get_associations;
-    fn gwas_get_variant_associations;
-    fn gwas_get_chromosomes;
-    fn gwas_get_chromosome;
-    fn gwas_get_chromosome_associations;
-    fn gwas_get_chromosome_variant_associations;
-    fn gwas_get_studies;
-    fn gwas_get_study;
-    fn gwas_get_study_associations;
-    fn gwas_get_traits;
-    fn gwas_get_trait;
-    fn gwas_get_trait_associations;
-    fn gwas_get_trait_studies;
-    fn gwas_get_trait_study;
-    fn gwas_get_trait_study_associations;
-    fn gwas_list_summary_stats_files;
-    fn gwas_list_trait_summary_stats_files;
-    fn gwas_list_trait_study_summary_stats_files;
-    fn gwas_download_summary_stats_files;
+    fn gwas_get;
+    fn gwas_associations;
+    fn gwas_files;
 }

@@ -14,16 +14,15 @@ A comprehensive R package providing a high-performance interface to the [GWAS Ca
 - **Chromosomes**: Chromosome-specific data and associations
 - **Studies**: GWAS study metadata and results
 - **Traits**: Phenotypic traits and their associated studies
-- **Variants**: Genetic variants and their associations
+- **Files**: Summary statistics file listing and downloading
 
 ## Features
 
-- 🚀 **High Performance**: Built with Rust for fast HTTP requests and JSON parsing
-- 🔍 **Comprehensive Filtering**: Support for p-value thresholds, base pair ranges, and more
-- 📊 **Flexible Data Access**: Retrieve harmonized, raw, or both data formats
-- 🔗 **Complete API Coverage**: All GWAS Summary Statistics Database endpoints supported
-- 📝 **HAL Format Support**: Full support for Hypertext Application Language responses
-- 🎯 **Type Safety**: Leverages Rust's type system for reliable data handling
+- **High Performance**: Built with Rust for fast HTTP requests and JSON parsing
+- **Flexible Filtering**: Advanced filtering with `gwas_filter()` objects
+- **Comprehensive Data Access**: Retrieve harmonized, raw, or both data formats
+- **Parallel Downloads**: Multi-threaded file downloading capabilities
+- **Type Safety**: Leverages Rust's type system for reliable data handling
 
 ## Installation
 
@@ -47,12 +46,7 @@ devtools::install_github("collide2954/iani")
 
 The package requires the Rust toolchain to compile the underlying API client:
 
-#### Linux
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-#### macOS
+#### macOS & Linux
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
@@ -65,185 +59,155 @@ Download and run [rustup-init.exe](https://rustup.rs/)
 ```r
 library(iani)
 
-# Test the connection
-gwas_client_new()
-
-# Get associations for a specific variant
-variant_data <- gwas_get_variant_associations("rs10875231", size = 5)
-cat(variant_data)
-
 # Get all chromosomes
-chromosomes <- gwas_get_chromosomes()
+chromosomes <- gwas_get("chromosomes")
 cat(chromosomes)
 
-# Get associations for chromosome 1 with p-value filtering
-chr1_assoc <- gwas_get_chromosome_associations(
-  chromosome = "1",
-  p_upper = "1e-5",
+# Get first 5 traits
+traits <- gwas_get("traits", size = 5)
+cat(traits)
+
+# Get associations for a specific variant
+variant_data <- gwas_associations("variant", "rs10875231", size = 5)
+cat(variant_data)
+
+# Get associations with p-value filtering
+significant <- gwas_associations(
+  p_value_min = "1e-8",
+  p_value_max = "5e-5",
   size = 10
 )
-cat(chr1_assoc)
-
-# Get all traits
-traits <- gwas_get_traits(size = 5)
-cat(traits)
+cat(significant)
 ```
 
 ## API Functions
+
+The simplified API consists of 6 core functions:
 
 ### Core Functions
 
 | Function | Description |
 |----------|-------------|
-| `gwas_client_new()` | Initialize GWAS API client |
-| `gwas_get_associations()` | Get all associations with filtering |
-| `gwas_get_variant_associations()` | Get associations for specific variant |
-
-### Chromosome Functions
-
-| Function | Description |
-|----------|-------------|
-| `gwas_get_chromosomes()` | List all chromosomes |
-| `gwas_get_chromosome()` | Get specific chromosome |
-| `gwas_get_chromosome_associations()` | Get associations for chromosome |
-| `gwas_get_chromosome_variant_associations()` | Get variant associations on chromosome |
-
-### Study Functions
-
-| Function | Description |
-|----------|-------------|
-| `gwas_get_studies()` | List all studies |
-| `gwas_get_study()` | Get specific study |
-| `gwas_get_study_associations()` | Get associations for study |
-
-### Trait Functions
-
-| Function | Description |
-|----------|-------------|
-| `gwas_get_traits()` | List all traits |
-| `gwas_get_trait()` | Get specific trait |
-| `gwas_get_trait_associations()` | Get associations for trait |
-| `gwas_get_trait_studies()` | Get studies for trait |
-| `gwas_get_trait_study()` | Get specific trait-study combination |
-| `gwas_get_trait_study_associations()` | Get associations for trait-study |
+| `gwas_filter()` | Create filter objects for advanced queries |
+| `gwas_get()` | Get entities (chromosomes, studies, traits) |
+| `gwas_associations()` | Get associations with flexible filtering |
+| `gwas_files()` | Unified file operations (list/download) |
+| `gwas_list_files()` | Convenient wrapper for listing files |
+| `gwas_download_files()` | Convenient wrapper for downloading files |
 
 ## Usage Examples
 
-### Basic Association Queries
+### Entity Retrieval
 
 ```r
-# Get first 10 associations
-associations <- gwas_get_associations(size = 10)
+# Get all chromosomes
+all_chromosomes <- gwas_get("chromosomes")
 
-# Filter by p-value
-significant <- gwas_get_associations(
-  p_upper = "5e-8",  # Genome-wide significance
-  size = 100
-)
+# Get specific chromosome
+chr1 <- gwas_get("chromosomes", id = "1")
 
-# Get raw data instead of harmonized
-raw_data <- gwas_get_associations(
-  reveal = "raw",
-  size = 10
-)
+# Get studies with pagination
+studies <- gwas_get("studies", start = 0, size = 10)
 
-# Get both harmonized and raw data
-all_data <- gwas_get_associations(
-  reveal = "all",
-  size = 10
-)
+# Get specific trait
+trait <- gwas_get("traits", id = "EFO_0003785")
 ```
 
-### Chromosome-Specific Queries
+### Association Queries
 
 ```r
-# Get associations for chromosome 22
-chr22 <- gwas_get_chromosome_associations(
-  chromosome = "22",
+# Get all associations (first 20)
+all_assoc <- gwas_associations()
+
+# Get associations for a specific variant
+variant_assoc <- gwas_associations("variant", "rs10875231")
+
+# Get associations for chromosome 1
+chr1_assoc <- gwas_associations("chromosome", "1", size = 50)
+
+# Get associations for a specific study
+study_assoc <- gwas_associations("study", "GCST005038")
+
+# Get associations for a trait
+trait_assoc <- gwas_associations("trait", "EFO_0003785")
+```
+
+### Advanced Filtering with gwas_filter()
+
+```r
+# Create a filter object
+filter <- gwas_filter(
+  p_value = c(1e-8, 5e-5),      # P-value range
+  bp_location = c(1000000, 2000000),  # Base pair range
+  study = "GCST005038",          # Specific study
+  reveal = "all",                # Show all data
+  size = 100                     # Return 100 results
+)
+
+# Use filter with associations
+filtered_assoc <- gwas_associations(filter = filter)
+
+# Use filter with chromosome associations
+chr_filtered <- gwas_associations("chromosome", "1", filter = filter)
+```
+
+### Direct Parameter Filtering
+
+```r
+# Filter associations by p-value
+significant <- gwas_associations(
+  p_value_min = "5e-8",
+  p_value_max = "1e-5",
   size = 50
 )
 
-# Filter by base pair location
-region <- gwas_get_chromosome_associations(
-  chromosome = "1",
-  bp_lower = 1000000,
-  bp_upper = 2000000,
-  size = 100
-)
-
-# Get specific variant on chromosome
-variant_chr <- gwas_get_chromosome_variant_associations(
-  chromosome = "1",
-  variant_id = "rs10875231"
+# Filter chromosome associations by location and p-value
+region_assoc <- gwas_associations(
+  entity_type = "chromosome",
+  entity_id = "1",
+  p_value_max = "1e-6",
+  bp_min = 1000000,
+  bp_max = 10000000,
+  reveal = "all"
 )
 ```
 
-### Study and Trait Queries
+### File Operations
 
 ```r
-# Get studies for a specific trait
-trait_studies <- gwas_get_trait_studies("EFO_0003785")
+# List summary statistics files for a study
+study_files <- gwas_list_files("study", "GCST005038")
+files_data <- jsonlite::fromJSON(study_files)
 
-# Get associations for a specific study
-study_assoc <- gwas_get_study_associations(
-  study_accession = "GCST005038",
-  p_upper = "1e-5"
-)
+# List files for a trait
+trait_files <- gwas_list_files("trait", "EFO_0003785")
 
-# Get associations for trait-study combination
-trait_study_assoc <- gwas_get_trait_study_associations(
-  trait_id = "EFO_0003785",
-  study_accession = "GCST005038"
-)
-```
+# List files for trait-study combination
+trait_study_files <- gwas_list_files("trait", "EFO_0003785", 
+                                    secondary_id = "GCST005038")
 
-### Downloading Full Summary Statistics
-
-You can list and download full summary statistics files for a given study, trait, or trait-study combination. You can also download one or more files in parallel using `gwas_download_summary_stats_files()`.
-
-```r
-# List available summary statistics files for a study
-files_json <- gwas_list_summary_stats_files("GCST005038")
-files <- jsonlite::fromJSON(files_json)
-print(files)
-
-# List available summary statistics files for a trait
-trait_files_json <- gwas_list_trait_summary_stats_files("EFO_0003785")
-trait_files <- jsonlite::fromJSON(trait_files_json)
-print(trait_files)
-
-# List available summary statistics files for a trait-study combination
-trait_study_files_json <- gwas_list_trait_study_summary_stats_files("EFO_0003785", "GCST005038")
-trait_study_files <- jsonlite::fromJSON(trait_study_files_json)
-print(trait_study_files)
-
-# Download a single summary statistics file (using the download_url from the listing)
-gwas_download_summary_stats_files(
-  file_urls = c("https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005038.tsv.gz"),
-  output_paths = c("GCST005038.tsv.gz")
-)
-
-# Download multiple summary statistics files in parallel
+# Download files
 urls <- c(
-  "https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005038.tsv.gz",
-  "https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005039.tsv.gz"
+  "https://www.ebi.ac.uk/gwas/summary-statistics/api/files/GCST005038.tsv.gz"
 )
-paths <- c("GCST005038.tsv.gz", "GCST005039.tsv.gz")
-gwas_download_summary_stats_files(urls, paths, max_concurrent = 4)
+paths <- c("GCST005038.tsv.gz")
+gwas_download_files(urls, paths, max_concurrent = 4)
 ```
 
-### Advanced Filtering
+### Unified File Operations
 
 ```r
-# Complex filtering example
-filtered_data <- gwas_get_chromosome_associations(
-  chromosome = "1",
-  p_lower = "1e-10",      # Lower p-value bound
-  p_upper = "5e-8",       # Upper p-value bound  
-  bp_lower = 1000000,     # Base pair range start
-  bp_upper = 10000000,    # Base pair range end
-  reveal = "all",         # Show both harmonized and raw
-  size = 200              # Return up to 200 results
+# List files using unified interface
+files_json <- gwas_files("list", "study", "GCST005038")
+
+# Download files using unified interface
+gwas_files(
+  operation = "download",
+  entity_type = "study",
+  entity_id = "GCST005038",
+  file_urls = urls,
+  output_paths = paths,
+  max_concurrent = 4
 )
 ```
 
@@ -255,7 +219,7 @@ All functions return JSON strings that can be parsed using `jsonlite::fromJSON()
 library(jsonlite)
 
 # Get data and parse JSON
-raw_json <- gwas_get_associations(size = 5)
+raw_json <- gwas_associations(size = 5)
 parsed_data <- fromJSON(raw_json)
 
 # Access embedded associations
@@ -292,7 +256,7 @@ Responses follow the HAL (Hypertext Application Language) format:
 }
 ```
 
-## Query Parameters
+## Parameters
 
 ### Common Parameters
 
@@ -300,17 +264,19 @@ Responses follow the HAL (Hypertext Application Language) format:
 - `size`: Number of items to return (default: 20)
 - `reveal`: Data format - "raw", "all", or harmonized (default)
 
-### Association Filtering
+### Filter Parameters
 
-- `p_lower`: Lower p-value threshold (e.g., "1e-10")
-- `p_upper`: Upper p-value threshold (e.g., "5e-8")
-- `study_accession`: Filter by specific study
-- `trait`: Filter by specific trait ID
+- `p_value`: P-value range as `c(min, max)`
+- `bp_location`: Base pair location range as `c(min, max)`
+- `study`: Study accession filter
+- `trait`: Trait ID filter
 
-### Chromosome-Specific
+### Association Function Parameters
 
-- `bp_lower`: Lower base pair location threshold
-- `bp_upper`: Upper base pair location threshold
+- `entity_type`: "variant", "chromosome", "study", "trait"
+- `entity_id`: Specific entity identifier
+- `p_value_min`/`p_value_max`: P-value thresholds
+- `bp_min`/`bp_max`: Base pair location thresholds
 
 ## Data Fields
 
@@ -339,9 +305,9 @@ Responses follow the HAL (Hypertext Application Language) format:
 The package returns descriptive error messages for common issues:
 
 ```r
-# Invalid variant ID
-result <- gwas_get_variant_associations("invalid_rsid")
-# Returns: "Error fetching variant associations: 404 Not Found"
+# Invalid entity type
+result <- gwas_get("invalid_type")
+# Returns: "Error fetching invalid_type: Invalid entity type"
 
 # Network issues
 # Returns: "Error creating client: ..."
@@ -351,8 +317,23 @@ result <- gwas_get_variant_associations("invalid_rsid")
 
 1. **Use appropriate page sizes**: Start with small `size` values for exploration
 2. **Filter early**: Use p-value and base pair filters to reduce data transfer
-3. **Chromosome-specific queries**: Use chromosome endpoints when possible for faster results
-4. **Batch processing**: Process results in chunks for large datasets
+3. **Use entity-specific queries**: Specify entity types when possible
+4. **Batch file downloads**: Use `max_concurrent` parameter for multiple files
+5. **Reuse filter objects**: Create filter objects once and reuse them
+
+## Migration from Legacy API
+
+If you were using the previous API with functions like `gwas_get_associations()`, here are the equivalents:
+
+```r
+# Legacy -> New
+gwas_get_associations() -> gwas_associations()
+gwas_get_variant_associations("rs123") -> gwas_associations("variant", "rs123")
+gwas_get_chromosomes() -> gwas_get("chromosomes")
+gwas_get_studies() -> gwas_get("studies")
+gwas_get_traits() -> gwas_get("traits")
+gwas_list_summary_stats_files("GCST123") -> gwas_list_files("study", "GCST123")
+```
 
 ## Contributing
 
