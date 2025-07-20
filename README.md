@@ -300,41 +300,6 @@ Responses follow the HAL (Hypertext Application Language) format:
 | `se` | Number | Standard error |
 | `code` | Number | Harmonization status code |
 
-## Error Handling
-
-The package returns descriptive error messages for common issues:
-
-```r
-# Invalid entity type
-result <- gwas_get("invalid_type")
-# Returns: "Error fetching invalid_type: Invalid entity type"
-
-# Network issues
-# Returns: "Error creating client: ..."
-```
-
-## Performance Tips
-
-1. **Use appropriate page sizes**: Start with small `size` values for exploration
-2. **Filter early**: Use p-value and base pair filters to reduce data transfer
-3. **Use entity-specific queries**: Specify entity types when possible
-4. **Batch file downloads**: Use `max_concurrent` parameter for multiple files
-5. **Reuse filter objects**: Create filter objects once and reuse them
-
-## Migration from Legacy API
-
-If you were using the previous API with functions like `gwas_get_associations()`, here are the equivalents:
-
-```r
-# Legacy -> New
-gwas_get_associations() -> gwas_associations()
-gwas_get_variant_associations("rs123") -> gwas_associations("variant", "rs123")
-gwas_get_chromosomes() -> gwas_get("chromosomes")
-gwas_get_studies() -> gwas_get("studies")
-gwas_get_traits() -> gwas_get("traits")
-gwas_list_summary_stats_files("GCST123") -> gwas_list_files("study", "GCST123")
-```
-
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests.
